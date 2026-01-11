@@ -1,0 +1,38 @@
+name: CI-CD
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1.8.0
+        with:
+          cluster_name: rm-cluster
+
+      - name: Build Docker image
+        run: |
+          docker build -t node-task:latest .
+
+      - name: Load image into kind
+        run: |
+          kind load docker-image node-task:latest --name rm-cluster
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Deploy with Helm
+        run: |
+          helm install node-task ./chart || echo "No Helm chart yet"
+
+      - name: Test container
+        run: |
+          docker run --rm node-task:latest node --version
